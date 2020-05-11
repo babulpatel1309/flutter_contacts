@@ -431,30 +431,11 @@ public class ContactsServicePlugin implements MethodCallHandler, FlutterPlugin, 
 
       if (withThumbnails) {
         for(Contact c : contacts){
-          final byte[] avatar = loadContactPhotoHighRes(
-                  c.identifier, photoHighResolution, contentResolver);
-          if (avatar != null) {
-            c.avatar = avatar;
-          } else {
-            // To stay backwards-compatible, return an empty byte array rather than `null`.
-            c.avatar = new byte[0];
+          final String avatarPath = loadContactPhotoURI(c.identifier);
+          if (avatarPath != null) {
+              c.prefix = avatarPath;
           }
-//          if ((Boolean) params[3])
-//              loadContactPhotoHighRes(c.identifier, (Boolean) params[3]);
-//          else
-//              setAvatarDataForContactIfAvailable(c);
         }
-      }
-
-      if (orderByGivenName)
-      {
-        Comparator<Contact> compareByGivenName = new Comparator<Contact>() {
-          @Override
-          public int compare(Contact contactA, Contact contactB) {
-            return contactA.compareTo(contactB);
-          }
-        };
-        Collections.sort(contacts,compareByGivenName);
       }
 
       //Transform the list of contacts to a list of Map
@@ -493,7 +474,7 @@ public class ContactsServicePlugin implements MethodCallHandler, FlutterPlugin, 
       selectionArgs.add(rawContactId);
       selection += " AND " + ContactsContract.Data.CONTACT_ID + " =?";
     }
-    return contentResolver.query(ContactsContract.Data.CONTENT_URI, PROJECTION, selection, selectionArgs.toArray(new String[selectionArgs.size()]), null);
+    return contentResolver.query(ContactsContract.Data.CONTENT_URI, PROJECTION, selection, selectionArgs.toArray(new String[selectionArgs.size()]), ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME + " ASC");
   }
 
   private Cursor getCursorForPhone(String phone) {
@@ -660,6 +641,17 @@ public class ContactsServicePlugin implements MethodCallHandler, FlutterPlugin, 
       Log.e(LOG_TAG, ex.getMessage());
       return null;
     }
+  }
+
+  private String loadContactPhotoURI(final String identifier) {
+      try {
+          final Uri uri = ContentUris.withAppendedId(ContactsContract.Contacts.CONTENT_URI, Long.parseLong(identifier));
+
+          return uri.toString();
+      } catch (Exception ex) {
+          Log.e(LOG_TAG, ex.getMessage());
+          return null;
+      }
   }
 
   private boolean addContact(Contact contact){
